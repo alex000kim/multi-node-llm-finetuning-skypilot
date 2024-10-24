@@ -1,0 +1,40 @@
+# LoRA finetuning Meta Llama 3.1 on any of your own infra.
+# To finetune a 70B model:  
+#  sky launch task.yaml -c llama31 --env HF_TOKEN --env WANDB_API_KEY --env MODEL_SIZE=70B
+
+envs:
+  MODEL_SIZE: 
+  HF_TOKEN:
+  DATASET: "yahma/alpaca-cleaned"
+  WANDB_API_KEY:
+
+resources:
+  cloud: kubernetes
+  accelerators: H100:8
+
+num_nodes: 2
+
+file_mounts:
+  /configs: ./configs
+
+setup: |
+  pip install torch torchvision torchao torchtune wandb
+  tune download meta-llama/Meta-Llama-3.1-${MODEL_SIZE}-Instruct \
+    --hf-token $HF_TOKEN \
+    --output-dir /tmp/Meta-Llama-3.1-${MODEL_SIZE}-Instruct \
+    --ignore-patterns "original/consolidated*"  
+  
+run: |
+  tune run --nproc_per_node $SKYPILOT_NUM_GPUS_PER_NODE \
+    lora_finetune_distributed \
+    --config /configs/${MODEL_SIZE}-lora.yaml \
+    dataset.source=$DATASET
+
+  Remove the checkpoint files to save space, LoRA serving only needs the
+  adapter files.
+  rm /tmp/Meta-Llama-3.1-${MODEL_SIZE}-Instruct/*.pt
+  rm /tmp/Meta-Llama-3.1-${MODEL_SIZE}-Instruct/*.safetensors
+  
+  mkdir -p /output/$MODEL_SIZE-lora
+  rsync -Pavz /tmp/Meta-Llama-3.1-${MODEL_SIZE}-Instruct /output/$MODEL_SIZE-lora
+  cp -r /tmp/lora_finetune_output /output/$MODEL_SIZE-lora/  
