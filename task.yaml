@@ -11,8 +11,25 @@ envs:
 resources:
   cloud: kubernetes
   accelerators: H100:8
-
 num_nodes: 2
+
+# Mount host path to the pod
+# https://github.com/nebius/nebius-solution-library/tree/main/k8s-training is mounting 
+# the shared filestore to /mnt/data, so we need to mount the same path in the pod
+experimental:
+  config_overrides:
+      kubernetes:
+          pod_config:
+            spec:
+              containers:
+                - volumeMounts:
+                    - mountPath: /mnt/data
+                      name: data-volume
+              volumes:
+                - name: data-volume
+                  hostPath:
+                    path: /mnt/data
+                    type: Directory
 
 file_mounts:
   /configs: ./configs
@@ -31,6 +48,6 @@ run: |
     dataset.source=$DATASET
   
   # Save outputs to persistent storage
-  mkdir -p /mnt/filestore/$MODEL_SIZE-lora
-  rsync -Pavz /tmp/Meta-Llama-3.1-${MODEL_SIZE}-Instruct /mnt/filestore/$MODEL_SIZE-lora
-  cp -r /tmp/lora_finetune_output /mnt/filestore/$MODEL_SIZE-lora/  
+  mkdir -p /mnt/data/$MODEL_SIZE-lora-output
+  rsync -Pavz /tmp/Meta-Llama-3.1-${MODEL_SIZE}-Instruct /mnt/data/$MODEL_SIZE-lora-output
+  rm -rf /tmp/Meta-Llama-3.1-${MODEL_SIZE}-Instruct
