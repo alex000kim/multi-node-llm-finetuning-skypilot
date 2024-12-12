@@ -14,8 +14,7 @@ resources:
 num_nodes: 2
 
 # Mount host path to the pod
-# https://github.com/nebius/nebius-solution-library/tree/main/k8s-training is mounting 
-# the shared filestore to /mnt/data, so we need to mount the same path in the pod
+# In my example, the filestore is mounted to /mnt/data, so we need to mount the same path in the pod
 experimental:
   config_overrides:
       kubernetes:
